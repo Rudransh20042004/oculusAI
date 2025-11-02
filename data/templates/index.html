@@ -90,6 +90,30 @@
         <div class="result">
             Predicted disease: {{ result }}
         </div>
+
+            <div class="chat-box" style="margin-top: 20px; text-align:center;">
+        <h2>Advice from GPT</h2>
+        <button onclick="getAdvice()" style="margin-bottom:10px; padding:10px 20px; border:none; border-radius:5px; background-color:#f39c12; color:white; cursor:pointer;">
+            Get Advice
+        </button>
+        <div id="advice" class="result" style="background:#fff3e0; font-size:20px; padding:20px; min-width:300px;">
+            <!-- GPT advice will appear here -->
+        </div>
+        </div>
+        <script>
+            function getAdvice() {
+                fetch('/get_advice', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'disease={{ result }}'
+                })
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('advice').innerText = data;
+                })
+                .catch(err => console.error(err));
+            }
+        </script>
     {% endif %}
 
 </body>

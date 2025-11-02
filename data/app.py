@@ -6,6 +6,8 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import img_to_array
 import pickle
 from PIL import Image
+from openai import OpenAI
+from dotenv import load_dotenv
 
 app = Flask(__name__)
 
@@ -14,6 +16,8 @@ EYE_FOLDER = 'eyes'
 os.makedirs(EYE_FOLDER, exist_ok=True)
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+load_dotenv()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Load your model and label encoder once
 model = load_model("disease_predictor_model.h5")
@@ -63,6 +67,30 @@ def upload():
         result=prediction
     )
 
+def ask_gpt(prompt):
+    """Ask GPT for clinical advice"""
+    response = client.chat.completions.create(
+        model="gpt-4",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=300,
+        temperature=0.5
+    )
+    return response.choices[0].message.content
+
+@app.route('/get_advice', methods=['POST'])
+def get_advice():
+    disease = request.form.get('disease')
+    if not disease:
+        return "No disease provided", 400
+
+    prompt = (
+        f"The patient has been diagnosed with {disease}. "
+        "Provide safe, first-hand clinical advice or steps they can take. "
+        "Keep it short and simple."
+    )
+
+    advice = ask_gpt(prompt)
+    return advice
 
 if __name__ == "__main__":
     app.run(debug=True)
