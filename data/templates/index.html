@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Eye Disease Predictor</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: #f2f7ff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+
+        form {
+            background: #ffffff;
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        input[type="submit"] {
+            background-color: #3498db;
+            color: #fff;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #2980b9;
+        }
+
+        .result {
+            margin-top: 20px;
+            background: #eaf4ff;
+            padding: 30px 40px;          /* increased padding */
+            border-radius: 12px;
+            color: #2c3e50;
+            font-weight: bold;
+            font-size: 24px;             /* bigger text */
+            min-width: 300px;            /* minimum width */
+            text-align: center;          /* center the text */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* subtle shadow */
+
+        }
+
+        img {
+            margin-top: 15px;
+            max-width: 300px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Eye Disease Predictor</h1>
+    <form action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept="image/*" required>
+        <input type="submit" value="Upload & Predict">
+    </form>
+
+    {% if img_file %}
+        <img src="{{ img_file }}" alt="Uploaded Eye Image">
+    {% endif %}
+
+    {% if result %}
+        <div class="result">
+            Predicted disease: {{ result }}
+        </div>
+    {% endif %}
+
+</body>
+</html>
