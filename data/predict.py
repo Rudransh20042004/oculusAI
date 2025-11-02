@@ -9,7 +9,7 @@ model = load_model("symptom_predictor_model.h5")
 print("✅ Model loaded successfully!")
 
 # Load your CSV
-data = pd.read_csv("new_imgsym.csv")
+data = pd.read_csv("newdata.csv")
 image_dir = "renamed_images/"
 
 # Prepare predictions
