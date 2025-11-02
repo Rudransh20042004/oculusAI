@@ -56,15 +56,14 @@
         .result {
             margin-top: 20px;
             background: #eaf4ff;
-            padding: 30px 40px;          /* increased padding */
+            padding: 30px 40px;
             border-radius: 12px;
             color: #2c3e50;
             font-weight: bold;
-            font-size: 24px;             /* bigger text */
-            min-width: 300px;            /* minimum width */
-            text-align: center;          /* center the text */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1); /* subtle shadow */
-
+            font-size: 24px;
+            min-width: 300px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
 
         img {
@@ -73,11 +72,53 @@
             border-radius: 10px;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
+
+        .advice {
+            background: #fff3e0;
+            font-size: 18px;
+            padding: 25px;
+            min-width: 300px;
+            max-width: 600px;
+            margin: 20px auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            white-space: pre-wrap;
+        }
+
+        .symptom-checkboxes label {
+            display: block;
+            margin: 5px 0;
+        }
+
+        #get-advice-btn {
+            margin-top: 15px;
+            background-color: #27ae60;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+
+        #get-advice-btn:hover {
+            background-color: #1e8449;
+        }
+
+        input#extra_symptoms {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 250px;
+        }
     </style>
 </head>
 <body>
     <h1>Eye Disease Predictor</h1>
-    <form action="/upload" method="POST" enctype="multipart/form-data">
+    
+    <form class="upload-form" action="/upload" method="POST" enctype="multipart/form-data">
         <input type="file" name="file" accept="image/*" required>
         <input type="submit" value="Upload & Predict">
     </form>
@@ -87,34 +128,69 @@
     {% endif %}
 
     {% if result %}
-        <div class="result">
-            Predicted disease: {{ result }}
+    <div class="result">
+        🧠 Predicted Disease: {{ result }}
+    </div>
+
+    <!-- Hidden input for JS -->
+    <input type="hidden" id="disease" value="{{ result }}">
+
+    <div id="symptom-section" style="margin-top: 20px; text-align:center;">
+        <h3>💬 Select your symptoms for {{ result }}:</h3>
+        <div class="symptom-checkboxes">
+            {% for s in disease_symptom_map[result] %}
+                <label>
+                    <input type="checkbox" name="common_symptoms" value="{{ s }}"> {{ s }}
+                </label>
+            {% endfor %}
         </div>
 
-            <div class="chat-box" style="margin-top: 20px; text-align:center;">
-        <h2>Advice from GPT</h2>
-        <button onclick="getAdvice()" style="margin-bottom:10px; padding:10px 20px; border:none; border-radius:5px; background-color:#f39c12; color:white; cursor:pointer;">
-            Get Advice
-        </button>
-        <div id="advice" class="result" style="background:#fff3e0; font-size:20px; padding:20px; min-width:300px;">
-            <!-- GPT advice will appear here -->
-        </div>
-        </div>
-        <script>
-            function getAdvice() {
-                fetch('/get_advice', {
+        <h4>Additional symptoms (optional):</h4>
+        <input type="text" id="extra_symptoms" placeholder="Describe any other symptoms">
+
+        <button id="get-advice-btn" type="button">Get Advice</button>
+    </div>
+
+    <div id="advice" class="advice"></div>
+
+    <script>
+        document.getElementById('get-advice-btn').addEventListener('click', async () => {
+            const btn = document.getElementById('get-advice-btn');
+            btn.disabled = true;
+            btn.innerText = 'Fetching advice...';
+
+            const checkboxes = document.querySelectorAll('input[name="common_symptoms"]:checked');
+            const common_selected = Array.from(checkboxes).map(cb => cb.value);
+
+            const extra_symptoms = document.getElementById('extra_symptoms').value
+                                    .split(',')
+                                    .map(s => s.trim())
+                                    .filter(s => s);
+
+            const payload = {
+                disease: document.getElementById('disease').value,
+                common_selected: common_selected,
+                extra_symptoms: extra_symptoms
+            };
+
+            try {
+                const response = await fetch('/get_advice', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'disease={{ result }}'
-                })
-                .then(response => response.text())
-                .then(data => {
-                    document.getElementById('advice').innerText = data;
-                })
-                .catch(err => console.error(err));
-            }
-        </script>
-    {% endif %}
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
 
+                const data = await response.json();
+                document.getElementById('advice').innerText = data.advice;
+            } catch (err) {
+                console.error(err);
+                document.getElementById('advice').innerText = 'Error fetching advice.';
+            }
+
+            btn.disabled = false;
+            btn.innerText = 'Get Advice';
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

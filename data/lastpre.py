@@ -94,3 +94,17 @@ import pickle
 with open("label_encoder.pkl", "wb") as f:
     pickle.dump(le, f)
 print("Label encoder saved as label_encoder.pkl")
+
+
+# --------- MAP DISEASE → RELEVANT SYMPTOMS ---------
+disease_symptom_map = {}
+for disease in df["disease_label"].unique():
+    subset = df[df["disease_label"] == disease]
+    # find symptoms that are most common (value >= 0.5 on average)
+    avg_symptom_values = subset[symptom_cols].mean()
+    relevant = avg_symptom_values[avg_symptom_values > 0.5].index.tolist()
+    disease_symptom_map[disease] = relevant
+
+with open("disease_symptom_map.pkl", "wb") as f:
+    pickle.dump(disease_symptom_map, f)
+print("✅ Disease-symptom map saved as disease_symptom_map.pkl")
