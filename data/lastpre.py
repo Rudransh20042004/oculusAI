@@ -108,3 +108,21 @@ for disease in df["disease_label"].unique():
 with open("disease_symptom_map.pkl", "wb") as f:
     pickle.dump(disease_symptom_map, f)
 print("✅ Disease-symptom map saved as disease_symptom_map.pkl")
+
+# --------- SAVE SCALER ---------
+with open("scaler.pkl", "wb") as f:
+    pickle.dump(scaler, f)
+print("✅ Scaler saved as scaler.pkl")
+
+# --------- MAP DISEASE → RELEVANT SYMPTOMS ---------
+disease_symptom_map = {}
+for disease in df["disease_label"].unique():
+    subset = df[df["disease_label"] == disease]
+    # find symptoms that are most common (value >= 0.5 on average)
+    avg_symptom_values = subset[symptom_cols].mean()
+    relevant = avg_symptom_values[avg_symptom_values > 0.5].index.tolist()
+    disease_symptom_map[disease] = relevant
+
+with open("disease_symptom_map.pkl", "wb") as f:
+    pickle.dump(disease_symptom_map, f)
+print("✅ Disease-symptom map saved as disease_symptom_map.pkl")

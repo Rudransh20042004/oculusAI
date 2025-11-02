@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👁️ Eye Health Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            background: #e8edff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e8edff;
+            border-color: #764ba2;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .upload-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .upload-btn:active {
+            transform: scale(0.95);
+        }
+
+        .result-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .prediction {
+            font-size: 1.8em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+
+        .uploaded-image {
+            max-width: 100%;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            margin-top: 20px;
+        }
+
+        .symptoms-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .symptom-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .symptom-name {
+            font-size: 1.1em;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+
+        .symptom-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .symptom-btn {
+            padding: 8px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .symptom-btn:hover {
+            background: #f0f0ff;
+        }
+
+        .symptom-btn.selected-yes {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+
+        .symptom-btn.selected-no {
+            background: #f44336;
+            color: white;
+            border-color: #f44336;
+        }
+
+        .evaluate-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            margin-top: 20px;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+
+        .evaluate-btn:hover {
+            transform: scale(1.02);
+        }
+
+        .evaluate-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .advice-box {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid #4caf50;
+        }
+
+        .advice-box.first-aid {
+            border-left-color: #f44336;
+        }
+
+        .advice-box.preventive {
+            border-left-color: #ff9800;
+        }
+
+        .advice-box.mild {
+            border-left-color: #4caf50;
+        }
+
+        .advice-title {
+            font-size: 1.3em;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+        .advice-content {
+            color: #555;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+
+        .extra-symptoms {
+            margin-top: 30px;
+        }
+
+        .symptom-input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .symptom-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        .symptom-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .add-symptom-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .add-symptom-btn:hover {
+            background: #764ba2;
+        }
+
+        .symptom-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .symptom-tag {
+            background: #e8edff;
+            color: #667eea;
+            padding: 8px 15px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .symptom-tag button {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0;
+            width: 20px;
+            height: 20px;
+        }
+
+        .analyze-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .analyze-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .analyze-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #c62828;
+        }
+
+        .hospital-alert {
+            background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(255, 68, 68, 0.4);
+            animation: pulse 2s infinite;
+            text-align: center;
+        }
+
+        .hospital-alert h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .hospital-alert-text {
+            font-size: 1.2em;
+            line-height: 1.8;
+            margin: 15px 0;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        .hospital-alert strong {
+            font-size: 1.15em;
+            text-decoration: underline;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 8px 30px rgba(255, 68, 68, 0.4);
+            }
+            50% {
+                box-shadow: 0 8px 40px rgba(255, 68, 68, 0.6);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>👁️ Eye Health Chatbot</h1>
+            <p>Upload an eye image to get started</p>
+        </div>
+
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="section">
+                <h2>📸 Upload Eye Image</h2>
+                <div class="upload-area" id="uploadArea">
+                    <p style="font-size: 1.2em; margin-bottom: 15px;">Click to upload or drag and drop</p>
+                    <input type="file" id="fileInput" accept="image/*">
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        Choose File
+                    </button>
+                </div>
+                <div id="imagePreview"></div>
+            </div>
+
+            <!-- Prediction Result -->
+            <div class="section hidden" id="predictionSection">
+                <h2>🧠 Prediction Result</h2>
+                <div class="result-box">
+                    <div class="prediction" id="diseaseName"></div>
+                </div>
+            </div>
+
+            <!-- Symptoms Section -->
+            <div class="section hidden" id="symptomsSection">
+                <h2>💬 Symptom Check</h2>
+                <p style="margin-bottom: 15px; color: #555;">Please answer yes/no for each symptom:</p>
+                <ul class="symptoms-list" id="symptomsList"></ul>
+                <button class="evaluate-btn" id="evaluateBtn" onclick="evaluateSymptoms()">
+                    Evaluate Symptoms
+                </button>
+            </div>
+
+            <!-- Hospital Alert Section -->
+            <div class="section hidden" id="hospitalAlertSection">
+                <div class="hospital-alert">
+                    <h2>🏥 URGENT: Seek Immediate Medical Attention</h2>
+                    <p class="hospital-alert-text">
+                        Based on your symptoms, it is strongly recommended that you <strong>visit a nearby hospital or emergency room immediately</strong>. 
+                        Your symptoms indicate a potentially serious condition that requires professional medical evaluation.
+                    </p>
+                    <p class="hospital-alert-text">
+                        While first-aid measures can help temporarily, <strong>professional medical care is essential</strong> for proper diagnosis and treatment.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Advice Section -->
+            <div class="section hidden" id="adviceSection">
+                <h2 id="adviceTitle"></h2>
+                <div class="advice-box" id="adviceBox">
+                    <div class="advice-content" id="adviceContent"></div>
+                </div>
+            </div>
+
+            <!-- Extra Symptoms Section -->
+            <div class="section hidden" id="extraSymptomsSection">
+                <h2>💬 Additional Symptoms</h2>
+                <p style="margin-bottom: 15px; color: #555;">Describe any other symptoms or concerns:</p>
+                <div class="symptom-input-group">
+                    <input type="text" class="symptom-input" id="symptomInput" placeholder="Enter a symptom...">
+                    <button class="add-symptom-btn" onclick="addSymptom()">Add</button>
+                </div>
+                <div class="symptom-tags" id="symptomTags"></div>
+                <button class="analyze-btn" id="analyzeBtn" onclick="analyzeExtraSymptoms()">
+                    Analyze Additional Symptoms
+                </button>
+            </div>
+
+            <!-- GPT Analysis Section -->
+            <div class="section hidden" id="analysisSection">
+                <h2>🧠 GPT Analysis</h2>
+                <div class="advice-box">
+                    <div class="advice-content" id="analysisContent"></div>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div class="error hidden" id="errorMessage"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentDisease = null;
+        let currentSymptoms = [];
+        let symptomResponses = {};
+        let userSymptoms = [];
+
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const imagePreview = document.getElementById('imagePreview');
+
+        // File upload handling
+        uploadArea.addEventListener('click', () => fileInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Please upload an image file');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imagePreview.innerHTML = `<img src="${e.target.result}" class="uploaded-image" alt="Uploaded image">`;
+            };
+            reader.readAsDataURL(file);
+
+            // Show loading
+            showLoading('Analyzing image...');
+            console.log('Uploading file:', file.name);
+
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Server error: ${response.status} - ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Response data:', data);
+                hideLoading();
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    currentDisease = data.disease;
+                    currentSymptoms = data.symptoms;
+                    displayPrediction(data);
+                    displaySymptoms(data.symptoms);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                hideLoading();
+                showError('Error processing image: ' + error.message);
+            });
+        }
+
+        function displayPrediction(data) {
+            document.getElementById('diseaseName').textContent = `Predicted Disease: ${data.disease}`;
+            document.getElementById('predictionSection').classList.remove('hidden');
+            document.getElementById('symptomsSection').classList.remove('hidden');
+            
+            if (data.symptoms.length === 0) {
+                document.getElementById('symptomsSection').innerHTML = '<p>No symptom data found for this disease.</p>';
+            }
+        }
+
+        function displaySymptoms(symptoms) {
+            const symptomsList = document.getElementById('symptomsList');
+            symptomsList.innerHTML = '';
+            symptomResponses = {};
+
+            symptoms.forEach(symptom => {
+                const item = document.createElement('li');
+                item.className = 'symptom-item';
+                item.innerHTML = `
+                    <span class="symptom-name">Do you have "${symptom}"?</span>
+                    <div class="symptom-buttons">
+                        <button class="symptom-btn" onclick="selectSymptom('${symptom}', 'yes')">Yes</button>
+                        <button class="symptom-btn" onclick="selectSymptom('${symptom}', 'no')">No</button>
+                    </div>
+                `;
+                symptomsList.appendChild(item);
+            });
+        }
+
+        function selectSymptom(symptom, answer) {
+            symptomResponses[symptom] = answer;
+            
+            // Update button styles
+            const buttons = event.target.parentElement.querySelectorAll('.symptom-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('selected-yes', 'selected-no');
+                if (btn.textContent === 'Yes' && answer === 'yes') {
+                    btn.classList.add('selected-yes');
+                } else if (btn.textContent === 'No' && answer === 'no') {
+                    btn.classList.add('selected-no');
+                }
+            });
+        }
+
+        function evaluateSymptoms() {
+            if (Object.keys(symptomResponses).length < currentSymptoms.length) {
+                showError('Please answer all symptom questions');
+                return;
+            }
+
+            const evaluateBtn = document.getElementById('evaluateBtn');
+            evaluateBtn.disabled = true;
+            evaluateBtn.textContent = 'Evaluating...';
+
+            fetch('/evaluate_symptoms', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    disease: currentDisease,
+                    symptom_responses: symptomResponses
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                evaluateBtn.disabled = false;
+                evaluateBtn.textContent = 'Evaluate Symptoms';
+                displayAdvice(data);
+                document.getElementById('extraSymptomsSection').classList.remove('hidden');
+            })
+            .catch(error => {
+                evaluateBtn.disabled = false;
+                evaluateBtn.textContent = 'Evaluate Symptoms';
+                showError('Error evaluating symptoms: ' + error.message);
+            });
+        }
+
+        function displayAdvice(data) {
+            const adviceSection = document.getElementById('adviceSection');
+            const adviceBox = document.getElementById('adviceBox');
+            const adviceContent = document.getElementById('adviceContent');
+            const adviceTitle = document.getElementById('adviceTitle');
+            const hospitalAlertSection = document.getElementById('hospitalAlertSection');
+
+            // Show hospital alert if severe symptoms detected
+            if (data.hospital_alert === true) {
+                hospitalAlertSection.classList.remove('hidden');
+                // Scroll to hospital alert for visibility
+                setTimeout(() => {
+                    hospitalAlertSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            } else {
+                hospitalAlertSection.classList.add('hidden');
+            }
+
+            adviceBox.className = 'advice-box ' + data.advice_type;
+            
+            if (data.advice_type === 'first_aid') {
+                adviceTitle.textContent = '🆘 First-hand Aid Suggestions';
+            } else if (data.advice_type === 'preventive') {
+                adviceTitle.textContent = '💡 Preventive Advice';
+            } else {
+                adviceTitle.textContent = '✅ Symptom Evaluation';
+            }
+
+            adviceContent.textContent = data.advice;
+            adviceSection.classList.remove('hidden');
+        }
+
+        function addSymptom() {
+            const input = document.getElementById('symptomInput');
+            const symptom = input.value.trim();
+            
+            if (symptom && !userSymptoms.includes(symptom)) {
+                userSymptoms.push(symptom);
+                input.value = '';
+                updateSymptomTags();
+            }
+        }
+
+        document.getElementById('symptomInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addSymptom();
+            }
+        });
+
+        function updateSymptomTags() {
+            const tagsContainer = document.getElementById('symptomTags');
+            tagsContainer.innerHTML = '';
+
+            userSymptoms.forEach((symptom, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'symptom-tag';
+                tag.innerHTML = `
+                    <span>${symptom}</span>
+                    <button onclick="removeSymptom(${index})">×</button>
+                `;
+                tagsContainer.appendChild(tag);
+            });
+        }
+
+        function removeSymptom(index) {
+            userSymptoms.splice(index, 1);
+            updateSymptomTags();
+        }
+
+        function analyzeExtraSymptoms() {
+            if (userSymptoms.length === 0) {
+                showError('Please add at least one additional symptom');
+                return;
+            }
+
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = 'Analyzing...';
+
+            fetch('/analyze_extra_symptoms', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    disease: currentDisease,
+                    user_symptoms: userSymptoms
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = 'Analyze Additional Symptoms';
+                
+                document.getElementById('analysisContent').textContent = data.analysis;
+                document.getElementById('analysisSection').classList.remove('hidden');
+            })
+            .catch(error => {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = 'Analyze Additional Symptoms';
+                showError('Error analyzing symptoms: ' + error.message);
+            });
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+            setTimeout(() => {
+                errorDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        function showLoading(message) {
+            const loading = document.createElement('div');
+            loading.className = 'loading';
+            loading.id = 'loadingDiv';
+            loading.textContent = message;
+            document.querySelector('.content').appendChild(loading);
+        }
+
+        function hideLoading() {
+            const loading = document.getElementById('loadingDiv');
+            if (loading) {
+                loading.remove();
+            }
+        }
+    </script>
+</body>
+</html>
+

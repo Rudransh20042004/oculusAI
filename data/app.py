@@ -1,157 +1,186 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import numpy as np
-import cv2
-from tensorflow.keras.models import load_model
-from tensorflow.keras.preprocessing.image import img_to_array
 import pickle
-from PIL import Image
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from openai import OpenAI
 from dotenv import load_dotenv
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
+# ---------------- CONFIG ----------------
+MODEL_PATH = "disease_predictor_model.h5"
+LABEL_ENCODER_PATH = "label_encoder.pkl"
+SCALER_PATH = "scaler.pkl"
+SYMPTOM_MAP_PATH = "disease_symptom_map.pkl"
+IMG_SIZE = (128, 128)
 UPLOAD_FOLDER = 'uploads'
-EYE_FOLDER = 'eyes'
-os.makedirs(EYE_FOLDER, exist_ok=True)
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Load environment variables from .env
 load_dotenv()
+
+# ---------------- OPENAI API KEY ----------------
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-# Load your model and label encoder once
-model = load_model("disease_predictor_model.h5")
-with open("label_encoder.pkl", "rb") as f:
-    le = pickle.load(f)
+# ---------------- LOAD MODEL & FILES ----------------
+print("Loading model and encoders...")
+model = load_model(MODEL_PATH)
 
-SYMPTOM_MAP_PATH = "disease_symptom_map.pkl"
+with open(LABEL_ENCODER_PATH, "rb") as f:
+    label_encoder = pickle.load(f)
+
+with open(SCALER_PATH, "rb") as f:
+    scaler = pickle.load(f)
+
 with open(SYMPTOM_MAP_PATH, "rb") as f:
     disease_symptom_map = pickle.load(f)
 
-def predict_disease(img_path):
-    # Open image with PIL and preprocess like test.py
-    img = Image.open(img_path).resize((128,128))
+print("✅ Model and GPT client loaded successfully!\n")
+
+# ---------------- IMAGE PREPROCESSING ----------------
+def preprocess_image(image_path):
+    img = load_img(image_path, target_size=IMG_SIZE)
     img_array = img_to_array(img) / 255.0
-    img_array = np.expand_dims(img_array, axis=0)
+    return np.expand_dims(img_array, axis=0)
 
-    # Placeholder symptom vector
-    symptoms = np.zeros((1, 16))
+# ---------------- GPT CHAT FUNCTION ----------------
+def ask_gpt(prompt):
+    """Get a response from GPT"""
+    response = client.chat.completions.create(
+        model="gpt-5",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    return response.choices[0].message.content.strip()
 
-    # Predict
-    pred_probs = model.predict([img_array, symptoms])
-    pred_class = np.argmax(pred_probs, axis=1)[0]
-    pred_disease = le.inverse_transform([pred_class])[0]
-    return pred_disease
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('test.html')
 
-@app.route('/upload', methods=['POST'])
-def upload():
-    file = request.files.get('file')
-    if not file:
-        return "No file uploaded", 400
+@app.route('/predict', methods=['POST'])
+def predict():
+    try:
+        if 'file' not in request.files:
+            print("Error: No file in request")
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            print("Error: Empty filename")
+            return jsonify({'error': 'No file selected'}), 400
+        
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            print(f"File saved to: {filepath}")
+            
+            # Preprocess image
+            print("Preprocessing image...")
+            X_img = preprocess_image(filepath)
+            n_symptoms = scaler.mean_.shape[0]
+            X_symptoms = np.zeros((1, n_symptoms))  # dummy symptom vector
+            
+            # Predict disease
+            print("Predicting disease...")
+            preds = model.predict([X_img, X_symptoms], verbose=0)
+            pred_idx = np.argmax(preds)
+            disease = label_encoder.inverse_transform([pred_idx])[0]
+            conf = float(preds[0][pred_idx] * 100)  # Convert numpy float32 to Python float
+            
+            # Get related symptoms
+            symptoms = disease_symptom_map.get(disease, [])
+            print(f"Prediction: {disease} ({conf:.2f}%)")
+            
+            return jsonify({
+                'disease': disease,
+                'confidence': round(conf, 2),
+                'symptoms': symptoms,
+                'image_url': f'/uploads/{filename}'
+            })
+        
+        print(f"Error: Invalid file type - {file.filename if file else 'None'}")
+        return jsonify({'error': 'Invalid file type'}), 400
+    except Exception as e:
+        print(f"Exception in predict: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': f'Server error: {str(e)}'}), 500
 
-    # Save original uploaded file in uploads folder
-    upload_path = os.path.join(UPLOAD_FOLDER, file.filename)
-    file.save(upload_path)
-
-    # Also save a copy in eyes folder (if needed for later)
-    eye_path = os.path.join(EYE_FOLDER, 'uploaded_eye.png')
-    img_cv = cv2.imread(upload_path)
-    cv2.imwrite(eye_path, img_cv)
-
-    # Run prediction
-    prediction = predict_disease(upload_path)
-
-    return render_template(
-        'index.html',
-        img_file=f"{UPLOAD_FOLDER}/{file.filename}",
-        result=prediction,
-        disease_symptom_map=disease_symptom_map
-    )
-
-def ask_gpt(prompt):
-    """
-    Ask GPT for safe clinical advice.
-    Adds a system message to guide the model.
-    """
-    
-    response = client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": (
-                    "You are a helpful medical assistant. Provide safe general advice or first-aid guidance. "
-"Avoid diagnosing, prescribing, or giving medications. Focus on home care and precautions."
-                )},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.7,
-            max_completion_tokens=500
-        )
-
-        # Debug: log raw response to help troubleshoot empty outputs
-    print("GPT raw response:", response)
-
-    advice = response.choices[0].message.content.strip()
-    if not advice:
-        advice = "GPT did not return advice. Please consult a medical professional if needed."
-    return advice
-
-@app.route('/get_advice', methods=['POST'])
-def get_advice():
-    """
-    Receives disease and symptoms, builds a safe prompt,
-    and returns GPT-generated advice as JSON.
-    """
-    data = request.get_json()
+@app.route('/evaluate_symptoms', methods=['POST'])
+def evaluate_symptoms():
+    data = request.json
     disease = data.get('disease')
-    common_selected = data.get('common_selected', [])
-    extra_symptoms = data.get('extra_symptoms', [])
-
-    # Compute symptom ratio
-    common_symptoms = disease_symptom_map.get(disease, [])
-    ratio = len(common_selected) / len(common_symptoms) if common_symptoms else 0
-
-    # Summarize symptoms
-    summary_symptoms = ", ".join(common_symptoms[:3])
-    if len(common_symptoms) > 3:
-        summary_symptoms += ", etc."
-
-    # Build user prompt safely
+    symptom_responses = data.get('symptom_responses', {})  # {symptom: yes/no}
+    
+    symptoms = disease_symptom_map.get(disease, [])
+    yes_count = sum(1 for s in symptoms if symptom_responses.get(s, '').lower() in ['yes', 'y'])
+    ratio = yes_count / len(symptoms) if symptoms else 0
+    
+    advice = None
+    advice_type = None
+    
     if ratio >= 0.5:
-        base_prompt = (
-            f"The patient shows multiple symptoms of {disease}. "
-            f"Provide safe first-aid or home care guidance, avoiding medications."
+        prompt = (
+            f"Give short, safe, step-by-step first-hand aid suggestions for someone showing symptoms of {disease}. "
+            f"Keep it under 5 bullet points and avoid medication names."
         )
+        advice = ask_gpt(prompt)
+        advice_type = "first_aid"
+        hospital_alert = True  # Add flag for severe symptoms
     elif ratio > 0:
-        base_prompt = (
-            f"The patient shows some symptoms of {disease}. "
-            f"Common symptoms include: {summary_symptoms}. "
-            f"Provide safe monitoring tips or precautions."
-        )
+        prompt = f"Give simple monitoring or prevention tips for {disease}."
+        advice = ask_gpt(prompt)
+        advice_type = "preventive"
+        hospital_alert = False
     else:
-        base_prompt = (
-            f"The patient shows no common symptoms of {disease}. "
-            f"Common symptoms include: {summary_symptoms}. "
-            f"Provide general advice or preventive guidance."
-        )
+        advice = "No matching symptoms — the symptoms may be mild or early stage."
+        advice_type = "mild"
+        hospital_alert = False
+    
+    return jsonify({
+        'ratio': round(ratio, 2),
+        'yes_count': yes_count,
+        'total_symptoms': len(symptoms),
+        'advice': advice,
+        'advice_type': advice_type,
+        'hospital_alert': hospital_alert
+    })
 
-    # Add extra symptoms if present
-    if extra_symptoms:
-        extra_prompt = (
-            f"Additional reported symptoms: {', '.join(extra_symptoms)}. "
-            f"Include any relevant precautions or home care advice."
-        )
-        full_prompt = f"{base_prompt}\n\n{extra_prompt}"
-    else:
-        full_prompt = base_prompt
+@app.route('/analyze_extra_symptoms', methods=['POST'])
+def analyze_extra_symptoms():
+    data = request.json
+    disease = data.get('disease')
+    user_symptoms = data.get('user_symptoms', [])  # list of strings
+    
+    if not user_symptoms:
+        return jsonify({'error': 'No additional symptoms provided'}), 400
+    
+    symptoms = disease_symptom_map.get(disease, [])
+    
+    extra_prompt = (
+        f"The predicted disease is {disease} with common symptoms: {', '.join(symptoms)}.\n"
+        f"The user also reports these additional symptoms: {', '.join(user_symptoms)}.\n"
+        f"Analyze whether these extra symptoms match the predicted disease, and suggest any extra precautions, "
+        f"first-hand care, or advice."
+    )
+    extra_advice = ask_gpt(extra_prompt)
+    
+    return jsonify({
+        'analysis': extra_advice
+    })
 
-    advice = ask_gpt(full_prompt)
-    return jsonify({"advice": advice})
+@app.route('/uploads/<filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=5001, debug=True)
